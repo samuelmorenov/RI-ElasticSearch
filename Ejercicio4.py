@@ -1,11 +1,13 @@
 #-------------------------------------------------------------------------------
 # Name:        Ejercicio4
+#
+# Author:      UO266321
 #-------------------------------------------------------------------------------
 
-import json
-import codecs
-from elasticsearch import Elasticsearch
+import json # Para poder trabajar con objetos JSON
+from elasticsearch import Elasticsearch # Para poder trabajar con objetos Elasticsearch
 
+#Configuracion necesaria para el funcionamiento del ejercicio
 def configureMapping():
     es = Elasticsearch()
     mapping  = {
@@ -36,12 +38,16 @@ def configureMapping():
     )
 
 
+#Busqueda en ElasticSearch de las palabras dadas en query
 def readElasticsearch(query):
 
+    #Para evitar que la busqueda retorne las palabras dadas se hará uso de
+    #una lista con todas las palabras de la query
     querywords = query.replace('\"', '').split()
 
     es = Elasticsearch()
 
+    #numero de resultados maximo que dara la consulta
     numero_salidas = 500
 
     results = es.search(
@@ -88,8 +94,11 @@ def readElasticsearch(query):
     return words
 
 
+#Metodo para leer el archivo Json con el nombre dado que devuelve los
+#titulos de los articulos del archivo
 def readJson(name):
     words = []
+    #Es necesario especificar el encoding para que no de error
     with open(name, encoding='utf-8-sig') as json_file:
         data = json.load(json_file)
         for word in data:
@@ -98,7 +107,8 @@ def readJson(name):
     return words
 
 
-
+#Dados el resultado de la query y la lista de titulos del json, devuelve
+#una lista de palabras que aparezcan en los dos
 def getComorbidities(query, json):
     wordsElasticSearch = readElasticsearch(query)
     wordsJson = readJson(json)
@@ -107,6 +117,8 @@ def getComorbidities(query, json):
 
     for we in wordsElasticSearch:
         for wj in wordsJson:
+            #separamos las palabras de los titulos y comprobamos que no se
+            #hayan añadido ya
             if we in wj.split() and we not in finalWords:
                 finalWords.append(we)
     return finalWords
@@ -117,18 +129,21 @@ def main():
 
     print("Ejercicio 4:")
 
+    #Para el suicidio se utilizaran las siguientes palabras:
     query1 = "suicide suicidal \"kill myself\" \"killing myself\" \"end my life\""
+    #Para las conductas autolesivas se utilizaran las siguientes palabras:
     query2 = "\"self harm\""
 
+    #los archivos Json deben estar en la misma carpeta que el ejercicio
+    #y llamarse asi:
     json1 = "GoogleScholar-SuicideComorbidity.json"
-    json2 = "GoogleScholar-SuicideComorbidity.json"
+    json2 = "GoogleScholar-SelfHarmComorbidity.json"
 
     result1 = getComorbidities(query1, json1)
     result2 = getComorbidities(query2, json2)
 
-    #for e in result1:
-        #print (e)
 
+    #Generacion del archivo con los resultados:
     name = 'ejercicio4.txt'
     f = open(name, "w")
     f.write("Resultados de comorbilidades para suicidio:"+"\n")
@@ -144,16 +159,5 @@ def main():
     print("Se ha generado un archivo "+name+" con los resultados")
 
 
-"""
-    name = 'ejercicio4.json'
-    with open(name, 'w') as file:
-        json.dump(words1, file, indent=4)
-        json.dump(words2, file, indent=4)
-
-
-
-    print("Se ha generado un archivo "+name+" con los resultados")
-
-"""
 if __name__ == '__main__':
     main()
