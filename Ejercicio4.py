@@ -5,14 +5,14 @@
 import json
 from elasticsearch import Elasticsearch
 
-def main():
 
-    print("Ejercicio 4\n")
+def search(query):
+
+    querywords = query.replace('\"', '').split()
 
     es = Elasticsearch()
 
-    numero_salidas = 5
-    query = "suicide suicidal kill myself killing myself end my life"
+    numero_salidas = 10
 
     results = es.search(
         index="reddit-mentalhealth",
@@ -21,8 +21,7 @@ def main():
             "query": {
                 "query_string": {
                     "default_field": "selftext",
-                    "query": query,
-                    "operator": "or"
+                    "query": query
                 }
             },
             "aggs": {
@@ -53,14 +52,32 @@ def main():
     words = []
     for j in ["Subreddit", "Text", "Title"]:
         for i in results["aggregations"][j]["buckets"]:
-            if i["key"] not in words:
+            if i["key"] not in words and i["key"] not in querywords:
                 words.append(i["key"])
 
-    # Guardar el archivo con formato json
-    with open('ejercicio4.json', 'w') as file:
-        json.dump(words, file, indent=4)
+    return words
 
-    print("Se ha generado un archivo ejercicio4.json con los resultados")
+
+def main():
+
+    print("Ejercicio 4:")
+
+
+    query1 = "suicide  suicidal \"kill myself\" \"killing myself\" \"end my life\""
+    query2 = "\"self harm\""
+
+    words1 = search(query1)
+    words2 = search(query2)
+
+
+    name = 'ejercicio4.json'
+    with open(name, 'w') as file:
+        json.dump(words1, file, indent=4)
+        json.dump(words2, file, indent=4)
+
+
+    print("Se ha generado un archivo "+name+" con los resultados")
+
 
 if __name__ == '__main__':
     main()
