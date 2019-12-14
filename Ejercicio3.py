@@ -56,10 +56,33 @@ def main():
                 ]
         }
     )
-
     # Iteramos sobre los resultados, no es preciso preocuparse de las
     # conexiones consecutivas que hay que hacer con el servidor ES
-
+    results2 = es.search(
+            index="reddit-mentalhealth3",
+            body={
+                "size": 0,
+                "query": {
+                "query_string": {
+                "query": "medication AND depression"
+                }
+            },
+            "aggs": {
+                "Terminos": {
+                    "significant_terms": {
+                        "field": "title",
+                        "size": 2000,
+                        "gnd": {}
+                        }
+                    }
+                },
+            "sort": [
+            {
+            "aggregations.Terminos.buckets.doc_count": "desc"
+            },
+            ]
+        }
+    )
 
 
     #creamos un array vacio para las claves que se han obtenido
@@ -71,15 +94,20 @@ def main():
     for r in range (0,len(results["aggregations"]["Terminos"]["buckets"])):
         tmp = results["aggregations"]["Terminos"]["buckets"][r]["key"]
         if(any(char.isdigit() for char in tmp)!=True):
-
             claves.append(results["aggregations"]["Terminos"]["buckets"][r]["key"]);
 
+    for r2 in range (0,len(results2["aggregations"]["Terminos"]["buckets"])):
+        tmp = results2["aggregations"]["Terminos"]["buckets"][r2]["key"]
+        if(any(char.isdigit() for char in tmp)!=True and results2["aggregations"]["Terminos"]["buckets"][r2]["key"] not in claves):
+            claves.append(results2["aggregations"]["Terminos"]["buckets"][r2]["key"]);
 
     #Se establece la url a la que hacer las solicitudes JSON
     url = "https://www.wikidata.org/w/api.php"
 
-    for x in range (0,5):
+    for x in range (0,len(claves)):
     #Se estabelecen los parametros, solo va a cambiar el indice de las claves
+        if(x%25==0):
+            print("Current element: "+claves[x]+" id... "+str(x)+" of "+str(len(claves))+"\n")
         params = dict(
         action = "wbsearchentities",
         search = claves[x],
@@ -93,11 +121,10 @@ def main():
         # Para cada posible valor, comprobar si es un medicamento
         for v in range (0,len(data["search"])):
             vid=data["search"][v]["id"]
-            #Agrego las ids a un array que tendra todas las ids para probar
-            #Si no estan
+            #Agrego las ids a un array que tendra todas las ids para comprobar
+            #Solo si no estan
             if vid not in idsComprobar:
                 idsComprobar.append(vid)
-            #print(id). DEBUG
 
     # Al final del bucle, ids tendra todas las ids con las que trabaja wikidata.
     # Ahora se trabajara con estas ids para obtener sus constraints
@@ -111,6 +138,8 @@ def main():
 
     for y in range (0,len(idsComprobar)):
     #Se estabelecen los parametros, solo va a cambiar el indice de las claves
+        if(y%25==0):
+            print("Checking ids "+str(y)+" of "+str(len(idsComprobar))+"\n")
         params = dict(
         action = "wbgetentities",
         ids = idsComprobar[y],
@@ -139,6 +168,7 @@ def main():
     for n in range (0,len(medicamentos)):
         f.write(medicamentos[n].encode("UTF-8")+'\n'.encode("UTF-8"))
     f.close()
+    print("Done!")
     # Preparar consultas con default_operator y docvalue_fields, por ejemplo
     # para obtener los textos únicamente para hacer data mining...
     #

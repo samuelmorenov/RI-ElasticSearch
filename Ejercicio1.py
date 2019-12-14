@@ -22,6 +22,10 @@ def main():
     # Nos conectamos por defecto a localhost:9200
     es = Elasticsearch()
 
+    #############################################################################
+    # 1º Búsqueda: Sacar términos relaccionados con la palabra
+    #############################################################################
+
     # Ésta consulta da una lista de palabras relaccionadas con alcoholismo
     # (o la palabra que pongamos en lugar de alcoholism),
     # sin palabras vacías como and o the que no aportan nada
@@ -39,7 +43,7 @@ def main():
                 "TerminosSignificativos":{
                     "significant_terms":{
                         "field":"selftext",
-                        "size":1000,
+                        "size":10,
                         "gnd":{}
                     }
                 }
@@ -50,17 +54,104 @@ def main():
     # Objetos json (cada uno tendrá una key con el termino)
     terminosSignificativos = results["aggregations"]["TerminosSignificativos"]["buckets"]
 
-    # Creamos un vector para almacenar los terminos
-    vectorTerminos = []
+    # Creamos un set para almacenar los terminos sin que se repitan
+    vectorTerminos = set([])
 
+    print("\n####################################\nTérminos encontrados con la 1º búsqueda\n####################################\n")
     # Añadimos los términos
     for i in terminosSignificativos:
-        vectorTerminos.append(i.get("key"))
+        vectorTerminos.add(i.get("key"))
+        print("\t"+i.get("key"))
+
+    #############################################################################
+    # 2º Búsqueda: Ahora hay que sacar de esas palabras, más relaccionadas
+    #############################################################################
+
+    # Obtener un string con las palabras
+    palabras=""
+    for i in vectorTerminos:
+        palabras+=i+" "
+
+    results2 = es.search(
+        index="reddit-mentalhealth",
+        body = {
+            "size":0,
+            "query":{
+                "query_string":{
+                    "default_field":"selftext",
+                    #"query":palabra
+                    "query":palabras
+                }
+            },
+            "aggs": {
+                "TerminosSignificativos":{
+                    "significant_terms":{
+                        "field":"selftext",
+                        "size":10,
+                        "gnd":{}
+                    }
+                }
+            }
+        }
+    )
+
+    # Objetos json (cada uno tendrá una key con el termino)
+    terminosSignificativos2 = results2["aggregations"]["TerminosSignificativos"]["buckets"]
+
+    print("\n####################################\nTérminos encontrados con la 2º búsqueda\n####################################\n")
+    # Añadimos los términos
+    for i in terminosSignificativos2:
+        vectorTerminos.add(i.get("key"))
+        print("\t"+i.get("key"))
+
+    #############################################################################
+    # 3º Búsqueda
+    #############################################################################
+
+    # Obtener un string con las palabras
+    palabras=""
+    for i in vectorTerminos:
+        palabras+=i+" "
+
+    results3 = es.search(
+        index="reddit-mentalhealth",
+        body = {
+            "size":0,
+            "query":{
+                "query_string":{
+                    "default_field":"selftext",
+                    "query":palabras
+                }
+            },
+            "aggs": {
+                "TerminosSignificativos":{
+                    "significant_terms":{
+                        "field":"selftext",
+                        "size":10,
+                        "gnd":{}
+                    }
+                }
+            }
+        }
+    )
+
+    # Objetos json (cada uno tendrá una key con el termino)
+    terminosSignificativos3 = results3["aggregations"]["TerminosSignificativos"]["buckets"]
+
+    print("\n####################################\nTérminos encontrados con la 3º búsqueda\n####################################\n")
+    # Añadimos los términos
+    for i in terminosSignificativos3:
+        vectorTerminos.add(i.get("key"))
+        print("\t"+i.get("key"))
 
     #############################################################################
     # Ya tenemos los téminos que están relaccionados con la palabra,
     # ahora obtendremos los 10 post que más de esas palabras contengan.
     #############################################################################
+
+    print("\n####################################\nTotal de términos encontrados\n####################################\n")
+    for i in vectorTerminos:
+        print("\t"+i)
 
     # 1. Obtener un string con las palabras
     palabras=""
@@ -71,7 +162,7 @@ def main():
     results2=es.search(
         index="reddit-mentalhealth",
         body = {
-            "size":100,
+            "size":25, # Obtenemos los 25 primeros resultados
             "query": {
                 "match": {
                     "selftext": {
@@ -83,10 +174,10 @@ def main():
         }
     )
 
-    # Obtenemos los 100 primeros posts
+    # Obtenemos los 25 primeros posts
     posts=results2["hits"]["hits"]
 
-    # Ya tenemos los 100 primeros posts, pero sólo hace falta el autor,
+    # Ya tenemos los 25 primeros posts, pero sólo hace falta el autor,
     # la fecha de creación y el texto. Hay que hacer un nuevo archivo
     # json con los posts.
 
@@ -103,9 +194,10 @@ def main():
 
         if yaEsta==False:
             salida['posts'].append({
-                'Autor: ':i["_source"].get("author"),
+                'Autor':i["_source"].get("author"),
                 'Fecha de creacion: ':i["_source"].get("created_utc"),
-                'Texto: ':i["_source"].get("selftext")
+                'Texto: ':i["_source"].get("selftext"),
+                '_id: ':i["_source"].get("id")
             })
 
     # Guardar el archivo con formato json
