@@ -9,27 +9,27 @@ from elasticsearch import Elasticsearch
 def configureMapping():
     es = Elasticsearch()
     mapping  = {
-      "properties": {
-        "author": {
-          "type": "text",
-          "fielddata": "true"
-        },
-        "selftext": {
-          "type": "text",
-          "fielddata": "true"
-        },
-        "title": {
-          "type": "text",
-          "fielddata": "true"
-        },
-        "subreddit": {
-          "type": "text",
-          "fielddata": "true"
+        "properties": {
+            "author": {
+                "type": "text",
+                "fielddata": "true"
+            },
+            "selftext": {
+                "type": "text",
+                "fielddata": "true"
+            },
+            "title": {
+                "type": "text",
+                "fielddata": "true"
+            },
+            "subreddit": {
+                "type": "text",
+                "fielddata": "true"
+            }
         }
-      }
     }
 
-    es.indices.create(
+    response = es.indices.put_mapping(
         index="reddit-mentalhealth",
         body=mapping,
         ignore=400 # ignore 400 already exists code
