@@ -5,6 +5,33 @@
 import json
 from elasticsearch import Elasticsearch
 
+def properties():
+    es = Elasticsearch()
+
+    #configuracion usada en el indice
+    argumentos = {
+      "properties": {
+        "author": {
+          "type": "text",
+          "fielddata": "true"
+        },
+        "selftext": {
+          "type": "text",
+          "fielddata": "true"
+        },
+        "title": {
+          "type": "text",
+          "fielddata": "true"
+        },
+        "subreddit": {
+          "type": "text",
+          "fielddata": "true"
+        }
+      }
+    }
+
+    es.indices.put_mapping(index="reddit-mentalhealth",doc_type="post",body=argumentos,ignore=400)
+
 
 def search(query):
 
@@ -12,7 +39,7 @@ def search(query):
 
     es = Elasticsearch()
 
-    numero_salidas = 10
+    numero_salidas = 1000
 
     results = es.search(
         index="reddit-mentalhealth",
@@ -60,6 +87,8 @@ def search(query):
 
 def main():
 
+    properties()
+
     print("Ejercicio 4:")
 
 
@@ -74,6 +103,7 @@ def main():
     with open(name, 'w') as file:
         json.dump(words1, file, indent=4)
         json.dump(words2, file, indent=4)
+
 
 
     print("Se ha generado un archivo "+name+" con los resultados")
