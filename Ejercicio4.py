@@ -3,13 +3,12 @@
 #-------------------------------------------------------------------------------
 
 import json
+import codecs
 from elasticsearch import Elasticsearch
 
-def properties():
+def configureMapping():
     es = Elasticsearch()
-
-    #configuracion usada en el indice
-    argumentos = {
+    mapping  = {
       "properties": {
         "author": {
           "type": "text",
@@ -30,16 +29,20 @@ def properties():
       }
     }
 
-    es.indices.put_mapping(index="reddit-mentalhealth",doc_type="post",body=argumentos,ignore=400)
+    es.indices.create(
+        index="reddit-mentalhealth",
+        body=mapping,
+        ignore=400 # ignore 400 already exists code
+    )
 
 
-def search(query):
+def readElasticsearch(query):
 
     querywords = query.replace('\"', '').split()
 
     es = Elasticsearch()
 
-    numero_salidas = 1000
+    numero_salidas = 500
 
     results = es.search(
         index="reddit-mentalhealth",
@@ -81,24 +84,67 @@ def search(query):
         for i in results["aggregations"][j]["buckets"]:
             if i["key"] not in words and i["key"] not in querywords:
                 words.append(i["key"])
-
+    print("Obtenidas palabras relacionadas con "+query+": "+str(len(words)))
     return words
 
 
-def main():
+def readJson(name):
+    words = []
+    with open(name, encoding='utf-8-sig') as json_file:
+        data = json.load(json_file)
+        for word in data:
+            words.append(word['title'])
+    print("Obtenidas palabras del json "+name+": "+str(len(words)))
+    return words
 
-    properties()
+
+
+def getComorbidities(query, json):
+    wordsElasticSearch = readElasticsearch(query)
+    wordsJson = readJson(json)
+    finalWords = []
+
+
+    for we in wordsElasticSearch:
+        for wj in wordsJson:
+            if we in wj.split() and we not in finalWords:
+                finalWords.append(we)
+    return finalWords
+
+
+def main():
+    configureMapping()
 
     print("Ejercicio 4:")
 
-
-    query1 = "suicide  suicidal \"kill myself\" \"killing myself\" \"end my life\""
+    query1 = "suicide suicidal \"kill myself\" \"killing myself\" \"end my life\""
     query2 = "\"self harm\""
 
-    words1 = search(query1)
-    words2 = search(query2)
+    json1 = "GoogleScholar-SuicideComorbidity.json"
+    json2 = "GoogleScholar-SuicideComorbidity.json"
+
+    result1 = getComorbidities(query1, json1)
+    result2 = getComorbidities(query2, json2)
+
+    #for e in result1:
+        #print (e)
+
+    name = 'ejercicio4.txt'
+    f = open(name, "w")
+    f.write("Resultados de comorbilidades para suicidio:"+"\n")
+    for e in result1:
+        f.write(e+"\n")
+
+    f.write("\n")
+    f.write("Resultados de comorbilidades para conductas autolesivas:"+"\n")
+    for e in result2:
+        f.write(e+"\n")
+    f.close()
+
+    print("Se ha generado un archivo "+name+" con los resultados")
 
 
+"""
     name = 'ejercicio4.json'
     with open(name, 'w') as file:
         json.dump(words1, file, indent=4)
@@ -108,6 +154,6 @@ def main():
 
     print("Se ha generado un archivo "+name+" con los resultados")
 
-
+"""
 if __name__ == '__main__':
     main()
